@@ -20,12 +20,12 @@ pipeline {
       }
     }
 
-    stage('Apply namespace + db + secrets') {
+    stage('Apply namespace + db ') {
       steps {
         sh """
-          kubectl apply -f k8s/namespace.yaml
-          kubectl apply -f k8s/postgres.yaml
-          kubectl apply -f k8s/secrets.yaml
+          kubectl apply -f k8s/dev/namespace.yaml
+          kubectl apply -f k8s/dev/postgres.yaml
+
         """
       }
     }
@@ -33,8 +33,8 @@ pipeline {
     stage('Deploy backend + ui') {
       steps {
         sh """
-          kubectl apply -f k8s/backend.yaml
-          kubectl apply -f k8s/ui.yaml
+          kubectl apply -f k8s/dev/backend.yaml
+          kubectl apply -f k8s/dev/ui.yaml
         """
       }
     }

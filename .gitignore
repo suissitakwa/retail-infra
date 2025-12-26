@@ -1,0 +1,4 @@
+**/.kube/
+**/kubeconfig
+**/dev/secrets.yaml
+.env*
