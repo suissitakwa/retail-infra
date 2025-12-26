@@ -1,0 +1,62 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: retail-backend
+  namespace: retail
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: retail-backend
+  template:
+    metadata:
+      labels:
+        app: retail-backend
+    spec:
+      containers:
+        - name: retail-backend
+          image: retail-backend:dev-latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8080
+          env:
+            - name: SPRING_DATASOURCE_URL
+              value: jdbc:postgresql://retail-db.retail.svc.cluster.local:5432/retail_db
+            - name: SPRING_DATASOURCE_USERNAME
+              value: user
+            - name: SPRING_PROFILES_ACTIVE
+              value: dev
+            - name: SPRING_DATASOURCE_PASSWORD
+              value: password
+            - name: STRIPE_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: retail-secrets
+                  key: STRIPE_SECRET_KEY
+
+            - name: STRIPE_WEBHOOK_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: retail-secrets
+                  key: STRIPE_WEBHOOK_SECRET
+
+            - name: JWT_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: retail-secrets
+                  key: JWT_SECRET_KEY
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: retail-backend
+  namespace: retail
+spec:
+  selector:
+    app: retail-backend
+  ports:
+    - port: 8080
+      targetPort: 8080
+      nodePort: 30001
+  type: NodePort
