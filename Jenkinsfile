@@ -4,6 +4,8 @@ pipeline {
   environment {
     NAMESPACE = "retail"
     KUBE_CONTEXT = "docker-desktop"
+    // Updated to the standard Jenkins home path
+    KUBECONFIG = "/var/jenkins_home/.kube/config"
   }
 
   stages {
@@ -11,50 +13,20 @@ pipeline {
       steps { checkout scm }
     }
 
-    stage('Use Kube Context') {
+    stage('K8s Deployment') {
       steps {
         sh """
-          kubectl config use-context ${KUBE_CONTEXT}
-          kubectl get nodes
-        """
-      }
-    }
+          # Infrastructure
+          kubectl --kubeconfig=${KUBECONFIG} --context ${KUBE_CONTEXT} apply -f k8s/dev/namespace.yaml
+          kubectl --kubeconfig=${KUBECONFIG} --context ${KUBE_CONTEXT} apply -f k8s/dev/postgres.yaml
 
-    stage('Apply namespace + db ') {
-      steps {
-        sh """
-          kubectl apply -f k8s/dev/namespace.yaml
-          kubectl apply -f k8s/dev/postgres.yaml
+          # Application
+          kubectl --kubeconfig=${KUBECONFIG} --context ${KUBE_CONTEXT} apply -f k8s/dev/backend.yaml
+          kubectl --kubeconfig=${KUBECONFIG} --context ${KUBE_CONTEXT} apply -f k8s/dev/ui.yaml
 
-        """
-      }
-    }
-
-    stage('Deploy backend + ui') {
-      steps {
-        sh """
-          kubectl apply -f k8s/dev/backend.yaml
-          kubectl apply -f k8s/dev/ui.yaml
-        """
-      }
-    }
-
-    stage('Rollout') {
-      steps {
-        sh """
-          kubectl rollout status deploy/retail-backend -n ${NAMESPACE} --timeout=180s
-          kubectl rollout status deploy/retail-ui -n ${NAMESPACE} --timeout=180s
-        """
-      }
-    }
-
-    stage('Force pull latest images') {
-      steps {
-        sh """
-          kubectl rollout restart deploy/retail-backend -n ${NAMESPACE}
-          kubectl rollout restart deploy/retail-ui -n ${NAMESPACE}
-          kubectl rollout status deploy/retail-backend -n ${NAMESPACE} --timeout=180s
-          kubectl rollout status deploy/retail-ui -n ${NAMESPACE} --timeout=180s
+          # Force Refresh & Status check
+          kubectl --kubeconfig=${KUBECONFIG} --context ${KUBE_CONTEXT} rollout restart deploy/retail-backend deploy/retail-ui -n ${NAMESPACE}
+          kubectl --kubeconfig=${KUBECONFIG} --context ${KUBE_CONTEXT} rollout status deploy/retail-backend -n ${NAMESPACE} --timeout=180s
         """
       }
     }
