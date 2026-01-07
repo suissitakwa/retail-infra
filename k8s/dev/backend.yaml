@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
         - name: retail-backend
-          image: retail-backend:dev-latest
+          image: retail-backend:local
           imagePullPolicy: Always
           ports:
             - containerPort: 8080
