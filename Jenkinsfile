@@ -1,26 +1,13 @@
 pipeline {
-    agent {
-        label 'jenkins-agent'
-    }
+    agent { label 'jenkins-agent' }
 
     stages {
-        stage('Initialize') {
+        stage('Initialize & Deploy') {
             steps {
-                // Move inside the kubectl container so the command is found
-                container('kubectl') {
-                    sh 'kubectl version --client'
-                }
-                echo "Running on a dynamic Kubernetes agent!"
-            }
-        }
-
-        stage('Deploy Application') {
-            steps {
-                container('kubectl') {
-                    // Added the insecure flag to handle the certificate issue we saw earlier
-                    sh 'kubectl apply -f k8s/dev/backend.yaml --insecure-skip-tls-verify'
-                    sh 'kubectl rollout status deployment/retail-backend -n retail --insecure-skip-tls-verify'
-                }
+                // No container() block needed!
+                // We use the 'jnlp' container which is already active.
+                sh 'kubectl version --client --insecure-skip-tls-verify'
+                sh 'kubectl apply -f k8s/dev/backend.yaml --insecure-skip-tls-verify'
             }
         }
     }
