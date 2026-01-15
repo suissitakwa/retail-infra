@@ -10,53 +10,57 @@ pipeline {
   stages {
     stage('Initialize') {
       steps {
-        echo "Preparing Namespaces and Service Bridges..."
-        sh '''
-          # 1. Create main dev namespace
-          kubectl get ns ${NAMESPACE} >/dev/null 2>&1 || kubectl create ns ${NAMESPACE}
 
-          # 2. Create 'retail' namespace
-          kubectl get ns retail >/dev/null 2>&1 || kubectl create ns retail
+        withCredentials([file(credentialsId: 'kubeconfig-retail', variable: 'KUBECONFIG')]) {
+          echo "Preparing Namespaces and Service Bridges..."
+          sh '''
+            kubectl get ns ${NAMESPACE} --kubeconfig=$KUBECONFIG >/dev/null 2>&1 || kubectl create ns ${NAMESPACE} --kubeconfig=$KUBECONFIG
 
-          # 3. Create the ExternalName bridge
-          kubectl -n retail get svc retail-backend >/dev/null 2>&1 || \
-          kubectl create service externalname retail-backend -n retail \
-            --external-name retail-backend.${NAMESPACE}.svc.cluster.local
-        '''
+            kubectl get ns retail --kubeconfig=$KUBECONFIG >/dev/null 2>&1 || kubectl create ns retail --kubeconfig=$KUBECONFIG
+
+            kubectl -n retail get svc retail-backend --kubeconfig=$KUBECONFIG >/dev/null 2>&1 || \
+            kubectl create service externalname retail-backend -n retail \
+              --external-name retail-backend.${NAMESPACE}.svc.cluster.local --kubeconfig=$KUBECONFIG
+          '''
+        }
       }
     }
 
     stage('Deploy Infrastructure') {
       steps {
-        echo "Applying Postgres..."
-        sh "kubectl apply -n ${NAMESPACE} -f k8s/dev/postgres.yaml"
+        withCredentials([file(credentialsId: 'kubeconfig-retail', variable: 'KUBECONFIG')]) {
+          echo "Applying Postgres..."
+          sh "kubectl apply -n ${NAMESPACE} -f k8s/dev/postgres.yaml --kubeconfig=$KUBECONFIG"
+        }
       }
     }
 
     stage('Deploy Application') {
       steps {
-        echo "Deploying Backend and UI..."
+        withCredentials([file(credentialsId: 'kubeconfig-retail', variable: 'KUBECONFIG')]) {
+          echo "Deploying Backend and UI..."
+          sh "kubectl apply -n ${NAMESPACE} -f k8s/dev/backend.yaml --kubeconfig=$KUBECONFIG"
+          sh "kubectl apply -n ${NAMESPACE} -f k8s/dev/ui.yaml --kubeconfig=$KUBECONFIG"
 
-        sh "kubectl apply -n ${NAMESPACE} -f k8s/dev/backend.yaml"
-        sh "kubectl apply -n ${NAMESPACE} -f k8s/dev/ui.yaml"
+          echo "Applying Kafka Environment Fixes..."
+          sh """
+            kubectl -n ${NAMESPACE} set env deployment/retail-backend \
+              KAFKA_ENABLED=${KAFKA_ENABLED} \
+              SPRING_KAFKA_BOOTSTRAP_SERVERS=${SPRING_KAFKA_BOOTSTRAP_SERVERS} \
+              --kubeconfig=$KUBECONFIG
+          """
 
-        echo "Applying Kafka Environment Fixes..."
-        sh """
-          kubectl -n ${NAMESPACE} set env deployment/retail-backend \
-            KAFKA_ENABLED=${KAFKA_ENABLED} \
-            SPRING_KAFKA_BOOTSTRAP_SERVERS=${SPRING_KAFKA_BOOTSTRAP_SERVERS}
-        """
-
-        echo "Forcing image pull for dev-latest..."
-        sh "kubectl -n ${NAMESPACE} rollout restart deployment/retail-ui || true"
-        sh "kubectl -n ${NAMESPACE} rollout restart deployment/retail-backend || true"
+          sh "kubectl -n ${NAMESPACE} rollout restart deployment/retail-ui --kubeconfig=$KUBECONFIG || true"
+          sh "kubectl -n ${NAMESPACE} rollout restart deployment/retail-backend --kubeconfig=$KUBECONFIG || true"
+        }
       }
     }
 
     stage('Verify') {
       steps {
-        sh "kubectl get pods -n ${NAMESPACE}"
-        echo "App should be live at: http://34.28.225.50"
+        withCredentials([file(credentialsId: 'kubeconfig-retail', variable: 'KUBECONFIG')]) {
+          sh "kubectl get pods -n ${NAMESPACE} --kubeconfig=$KUBECONFIG"
+        }
       }
     }
   }
