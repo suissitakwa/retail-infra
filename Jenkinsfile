@@ -1,70 +1,63 @@
 pipeline {
-
-  agent { label 'jenkins-agent' }
+  agent any
 
   environment {
     NAMESPACE = "retail-dev"
+    // Disables Kafka so the backend doesn't hang/403
+    KAFKA_ENABLED = "false"
+    SPRING_KAFKA_BOOTSTRAP_SERVERS = ""
   }
 
   stages {
-
     stage('Initialize') {
       steps {
-        echo "Checking connection to Kubernetes..."
-        sh 'kubectl cluster-info'
-
-        echo "Creating Namespace if it doesn't exist..."
+        echo "Preparing Namespaces and Service Bridges..."
         sh '''
+          # 1. Create main dev namespace
           kubectl get ns ${NAMESPACE} >/dev/null 2>&1 || kubectl create ns ${NAMESPACE}
-        '''
 
-        sleep 3
+          # 2. Create 'retail' namespace (needed for UI hardcoded config)
+          kubectl get ns retail >/dev/null 2>&1 || kubectl create ns retail
+
+          # 3. Create the ExternalName bridge so UI can find Backend
+          kubectl -n retail get svc retail-backend >/dev/null 2>&1 || \
+          kubectl create service externalname retail-backend -n retail \
+            --external-name retail-backend.${NAMESPACE}.svc.cluster.local
+        '''
       }
     }
 
-    stage('Deploy Infrastructure (Postgres)') {
+    stage('Deploy Infrastructure') {
       steps {
         echo "Applying Postgres..."
-        sh 'kubectl apply -n ${NAMESPACE} -f k8s/dev/postgres.yaml'
-
-        echo "Waiting for Postgres to be ready..."
-        sh '''
-          kubectl -n ${NAMESPACE} rollout status deployment/retail-db --timeout=120s \
-          || echo "Postgres taking longer than expected..."
-        '''
+        sh "kubectl apply -n ${NAMESPACE} -f k8s/dev/postgres.yaml"
       }
     }
 
     stage('Deploy Application') {
       steps {
         echo "Deploying Backend and UI..."
-        sh 'kubectl apply -n ${NAMESPACE} -f k8s/dev/backend.yaml'
-        sh 'kubectl apply -n ${NAMESPACE} -f k8s/dev/ui.yaml'
+        # We use 'set env' after apply to ensure our Kafka fixes stick
+        sh "kubectl apply -n ${NAMESPACE} -f k8s/dev/backend.yaml"
+        sh "kubectl apply -n ${NAMESPACE} -f k8s/dev/ui.yaml"
 
-        // Force refresh (useful when tag is dev-latest)
         sh '''
-          kubectl -n ${NAMESPACE} rollout restart deployment/retail-backend || true
-          kubectl -n ${NAMESPACE} rollout restart deployment/retail-ui || true
+          kubectl -n ${NAMESPACE} set env deployment/retail-backend \
+            KAFKA_ENABLED=${KAFKA_ENABLED} \
+            SPRING_KAFKA_BOOTSTRAP_SERVERS=${SPRING_KAFKA_BOOTSTRAP_SERVERS}
         '''
+
+        echo "Forcing image pull for dev-latest..."
+        sh "kubectl -n ${NAMESPACE} rollout restart deployment/retail-ui || true"
+        sh "kubectl -n ${NAMESPACE} rollout restart deployment/retail-backend || true"
       }
     }
 
-    stage('Verify Deployment') {
+    stage('Verify') {
       steps {
-        echo "Final Status of Pods in '${NAMESPACE}' namespace:"
-        sh 'kubectl get pods -n ${NAMESPACE} -o wide'
-        sh 'kubectl get svc -n ${NAMESPACE} -o wide'
+        sh "kubectl get pods -n ${NAMESPACE}"
+        echo "App should be live at: http://34.28.225.50"
       }
-    }
-  }
-
-  post {
-    always {
-      echo "Pipeline finished. Check the '${NAMESPACE}' namespace for status."
-    }
-    failure {
-      echo "Pipeline failed. Check the logs above for kubectl errors."
-      sh 'kubectl get events -n ${NAMESPACE} --sort-by=.metadata.creationTimestamp | tail -n 40 || true'
     }
   }
 }
