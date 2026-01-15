@@ -35,26 +35,27 @@ pipeline {
       }
     }
 
-    stage('Deploy Application') {
-      steps {
-        withCredentials([file(credentialsId: 'kubeconfig-retail', variable: 'KUBECONFIG')]) {
-          echo "Deploying Backend and UI..."
-          sh "kubectl apply -n ${NAMESPACE} -f k8s/dev/backend.yaml --kubeconfig=$KUBECONFIG"
-          sh "kubectl apply -n ${NAMESPACE} -f k8s/dev/ui.yaml --kubeconfig=$KUBECONFIG"
+   stage('Deploy Application') {
+         steps {
+           withCredentials([file(credentialsId: 'kubeconfig-retail', variable: 'KUBECONFIG')]) {
+             echo "Deploying Backend and UI..."
+             sh "kubectl apply -n ${NAMESPACE} -f k8s/dev/backend.yaml --kubeconfig=$KUBECONFIG"
+             sh "kubectl apply -n ${NAMESPACE} -f k8s/dev/ui.yaml --kubeconfig=$KUBECONFIG"
 
-          echo "Applying Kafka Environment Fixes..."
-          sh """
-            kubectl -n ${NAMESPACE} set env deployment/retail-backend \
-              KAFKA_ENABLED=${KAFKA_ENABLED} \
-              SPRING_KAFKA_BOOTSTRAP_SERVERS=${SPRING_KAFKA_BOOTSTRAP_SERVERS} \
-              --kubeconfig=$KUBECONFIG
-          """
+             echo "Applying Kafka Environment Fixes..."
 
-          sh "kubectl -n ${NAMESPACE} rollout restart deployment/retail-ui --kubeconfig=$KUBECONFIG || true"
-          sh "kubectl -n ${NAMESPACE} rollout restart deployment/retail-backend --kubeconfig=$KUBECONFIG || true"
-        }
-      }
-    }
+             sh """
+               kubectl -n ${env.NAMESPACE} set env deployment/retail-backend \
+                 KAFKA_ENABLED=${env.KAFKA_ENABLED} \
+                 SPRING_KAFKA_BOOTSTRAP_SERVERS=${env.SPRING_KAFKA_BOOTSTRAP_SERVERS} \
+                 --kubeconfig=$KUBECONFIG
+             """
+
+             sh "kubectl -n ${env.NAMESPACE} rollout restart deployment/retail-ui --kubeconfig=$KUBECONFIG || true"
+             sh "kubectl -n ${env.NAMESPACE} rollout restart deployment/retail-backend --kubeconfig=$KUBECONFIG || true"
+           }
+         }
+       }
 
     stage('Verify') {
       steps {
