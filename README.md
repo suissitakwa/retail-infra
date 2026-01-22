@@ -1,4 +1,4 @@
-# Retail Infrastructure — CI/CD & Cloud Delivery (GCP Dev)
+# Retail Infrastructure — CI/CD & Cloud Delivery (GCP Dev / GKE)
 
 Infrastructure and delivery automation for the **Retail Platform**.
 
@@ -13,26 +13,52 @@ This repository focuses on **Continuous Delivery (CD)** and deployment workflows
 ## Purpose
 
 This repository demonstrates how I design and operate **production-style delivery pipelines**:
-- clean separation between CI and CD
+- clear separation between **CI (GitHub Actions)** and **CD (Jenkins)**
 - repeatable deployments to cloud environments
 - environment-aware configuration (dev today, promotable to prod)
 - secure handling of secrets and credentials
 
-> The current deployment target is a **development environment on Google Cloud**.  
-> The pipeline is intentionally designed to be extensible to staging and production.
+> Current deployment target: **Google Kubernetes Engine (GKE) — Dev environment**
 
 ---
 
-## High-Level Architecture
+## CI/CD Overview
 
 ```text
-Developer Push
-      ↓
-GitHub Actions (CI)
-- build
-- test
-- package artifact / image
-      ↓
-Jenkins (CD)
-- deploy to Google Cloud (dev)
-- rollout verification
+┌──────────────────────────────────────────────────────────────────────┐
+│                           Retail Platform (Multi-Repo)               │
+│  Backend: suissitakwa/retail     UI: suissitakwa/retail-ui           │
+│  CD/Infra: suissitakwa/retail-infra                                  │
+└──────────────────────────────────────────────────────────────────────┘
+
+Developer Workflow
+------------------
+   git push / PR
+        │
+        ▼
+┌───────────────────────────────┐
+│ GitHub Actions (CI)           │
+│ - Build                       │
+│ - Unit tests                  │
+│ - Checks/Lint (optional)      │
+│ - Build Docker image          │
+│ - Push image to registry      │
+└───────────────────────────────┘
+        │
+        │  (Trigger Jenkins job manually OR via webhook)
+        ▼
+┌───────────────────────────────┐
+│ Jenkins (CD)                  │
+│ - Pull image tag/commit SHA   │
+│ - Deploy to GKE (DEV)         │
+│ - Rollout verification        │
+│ - Smoke check / health check  │
+└───────────────────────────────┘
+        │
+        ▼
+┌───────────────────────────────┐
+│ Google Cloud (DEV)            │
+│ - GKE workloads (Deploy/Svc)  │
+│ - Secrets/Config per env      │
+│ - Prometheus metrics scraping │
+└───────────────────────────────┘
