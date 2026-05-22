@@ -19,15 +19,19 @@ spec:
           imagePullPolicy: Always
           ports:
             - containerPort: 8080
+
           env:
+            # ── Database ──────────────────────────────────────────
+            - name: SPRING_PROFILES_ACTIVE
+              value: dev
             - name: SPRING_DATASOURCE_URL
               value: jdbc:postgresql://retail-db.retail-dev.svc.cluster.local:5432/retail_db
             - name: SPRING_DATASOURCE_USERNAME
               value: user
-            - name: SPRING_PROFILES_ACTIVE
-              value: dev
             - name: SPRING_DATASOURCE_PASSWORD
               value: password
+
+            # ── Secrets ───────────────────────────────────────────
             - name: STRIPE_SECRET_KEY
               valueFrom:
                 secretKeyRef:
@@ -43,6 +47,63 @@ spec:
                 secretKeyRef:
                   name: retail-secrets
                   key: JWT_SECRET_KEY
+
+            # ── Non-secret config (from ConfigMap) ─────────────────
+            - name: APP_FRONTEND_BASE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: retail-config
+                  key: APP_FRONTEND_BASE_URL
+            - name: SPRING_DATA_REDIS_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: retail-config
+                  key: SPRING_DATA_REDIS_HOST
+            - name: SPRING_DATA_REDIS_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: retail-config
+                  key: SPRING_DATA_REDIS_PORT
+            - name: SPRING_CACHE_TYPE
+              valueFrom:
+                configMapKeyRef:
+                  name: retail-config
+                  key: SPRING_CACHE_TYPE
+            - name: KAFKA_ENABLED
+              valueFrom:
+                configMapKeyRef:
+                  name: retail-config
+                  key: KAFKA_ENABLED
+            - name: SPRING_KAFKA_BOOTSTRAP_SERVERS
+              valueFrom:
+                configMapKeyRef:
+                  name: retail-config
+                  key: SPRING_KAFKA_BOOTSTRAP_SERVERS
+
+          # ── Health probes ──────────────────────────────────────
+          readinessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8080
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            failureThreshold: 5
+          livenessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8080
+            initialDelaySeconds: 60
+            periodSeconds: 20
+            failureThreshold: 3
+
+          # ── Resource limits ────────────────────────────────────
+          resources:
+            requests:
+              memory: "512Mi"
+              cpu: "250m"
+            limits:
+              memory: "1Gi"
+              cpu: "500m"
 
 ---
 apiVersion: v1
