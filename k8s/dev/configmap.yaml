@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: retail-config
+  namespace: retail-dev
+data:
+  # Update this to the real external URL once GKE assigns a LoadBalancer IP/domain
+  APP_FRONTEND_BASE_URL: "http://retail-ui.retail-dev.svc.cluster.local"
+  SPRING_DATA_REDIS_HOST: "retail-redis.retail-dev.svc.cluster.local"
+  SPRING_DATA_REDIS_PORT: "6379"
+  SPRING_CACHE_TYPE: "redis"
+  KAFKA_ENABLED: "false"
+  SPRING_KAFKA_BOOTSTRAP_SERVERS: ""
