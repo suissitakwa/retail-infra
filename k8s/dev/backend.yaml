@@ -81,18 +81,23 @@ spec:
                   key: SPRING_KAFKA_BOOTSTRAP_SERVERS
 
           # ── Health probes ──────────────────────────────────────
-          readinessProbe:
+          startupProbe:
             httpGet:
-              path: /actuator/health
+              path: /actuator/health/liveness
               port: 8080
             initialDelaySeconds: 30
             periodSeconds: 10
-            failureThreshold: 5
+            failureThreshold: 12        # allows up to 2 min for slow startup
+          readinessProbe:
+            httpGet:
+              path: /actuator/health/readiness
+              port: 8080
+            periodSeconds: 10
+            failureThreshold: 3
           livenessProbe:
             httpGet:
-              path: /actuator/health
+              path: /actuator/health/liveness
               port: 8080
-            initialDelaySeconds: 60
             periodSeconds: 20
             failureThreshold: 3
 

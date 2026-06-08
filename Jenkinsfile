@@ -73,7 +73,16 @@ pipeline {
 
   post {
     failure {
-      echo "Pipeline failed — check pod logs with: kubectl logs -n retail-dev deployment/retail-backend"
+      withCredentials([file(credentialsId: 'kubeconfig-retail', variable: 'KUBECONFIG')]) {
+        echo "Pipeline failed — rolling back backend and UI deployments..."
+        sh "kubectl rollout undo deployment/retail-backend -n ${NAMESPACE} --kubeconfig=$KUBECONFIG || true"
+        sh "kubectl rollout undo deployment/retail-ui      -n ${NAMESPACE} --kubeconfig=$KUBECONFIG || true"
+        sh "kubectl get pods -n ${NAMESPACE} --kubeconfig=$KUBECONFIG"
+        echo "Rollback complete. Check logs with: kubectl logs -n ${NAMESPACE} deployment/retail-backend"
+      }
+    }
+    success {
+      echo "Deployment successful — ${NAMESPACE} is live."
     }
   }
 }
