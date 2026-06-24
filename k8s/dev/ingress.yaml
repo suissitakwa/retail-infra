@@ -1,0 +1,78 @@
+# GKE HTTP(S) Load Balancer with managed TLS
+#
+# Setup steps (one-time, before applying):
+#   1. Reserve a static global IP:
+#        gcloud compute addresses create retail-dev-ip --global
+#   2. Get the assigned IP:
+#        gcloud compute addresses describe retail-dev-ip --global --format='get(address)'
+#   3. Point your domain's DNS A record to that IP.
+#   4. Replace REPLACE_WITH_YOUR_DOMAIN below with your actual domain (e.g. api.yourdomain.com).
+#   5. kubectl apply -n retail-dev -f k8s/dev/ingress.yaml
+#   6. TLS cert provisioning takes ~15 min after DNS propagates.
+#      Check status: kubectl describe managedcertificate retail-tls -n retail-dev
+#
+# The Ingress exposes:
+#   /api/** and /auth/** → retail-backend:8080
+#   /*                   → retail-ui:80
+#
+# After the external IP is assigned, update configmap.yaml:
+#   APP_FRONTEND_BASE_URL: "https://REPLACE_WITH_YOUR_DOMAIN"
+
+---
+apiVersion: networking.gke.io/v1
+kind: ManagedCertificate
+metadata:
+  name: retail-tls
+  namespace: retail-dev
+spec:
+  domains:
+    - REPLACE_WITH_YOUR_DOMAIN
+
+---
+apiVersion: networking.gke.io/v1beta1
+kind: FrontendConfig
+metadata:
+  name: retail-frontend-config
+  namespace: retail-dev
+spec:
+  redirectToHttps:
+    enabled: true
+    responseCodeName: MOVED_PERMANENTLY_DEFAULT
+
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: retail-ingress
+  namespace: retail-dev
+  annotations:
+    kubernetes.io/ingress.global-static-ip-name: "retail-dev-ip"
+    networking.gke.io/managed-certificates: "retail-tls"
+    networking.gke.io/v1beta1.FrontendConfig: "retail-frontend-config"
+    kubernetes.io/ingress.class: "gce"
+spec:
+  rules:
+    - host: REPLACE_WITH_YOUR_DOMAIN
+      http:
+        paths:
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: retail-backend
+                port:
+                  number: 8080
+          - path: /auth
+            pathType: Prefix
+            backend:
+              service:
+                name: retail-backend
+                port:
+                  number: 8080
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: retail-ui
+                port:
+                  number: 80

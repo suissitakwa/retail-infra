@@ -47,9 +47,10 @@ pipeline {
     stage('Deploy Application') {
       steps {
         withCredentials([file(credentialsId: 'kubeconfig-retail', variable: 'KUBECONFIG')]) {
-          echo "Deploying backend and UI..."
-          sh "kubectl apply -n ${NAMESPACE} -f k8s/dev/backend.yaml --kubeconfig=$KUBECONFIG"
-          sh "kubectl apply -n ${NAMESPACE} -f k8s/dev/ui.yaml      --kubeconfig=$KUBECONFIG"
+          echo "Deploying backend, UI, and Ingress..."
+          sh "kubectl apply -n ${NAMESPACE} -f k8s/dev/backend.yaml  --kubeconfig=$KUBECONFIG"
+          sh "kubectl apply -n ${NAMESPACE} -f k8s/dev/ui.yaml       --kubeconfig=$KUBECONFIG"
+          sh "kubectl apply -n ${NAMESPACE} -f k8s/dev/ingress.yaml  --kubeconfig=$KUBECONFIG"
 
           echo "Rolling restart to pick up latest image..."
           sh "kubectl -n ${NAMESPACE} rollout restart deployment/retail-backend --kubeconfig=$KUBECONFIG || true"
@@ -64,8 +65,9 @@ pipeline {
     stage('Verify') {
       steps {
         withCredentials([file(credentialsId: 'kubeconfig-retail', variable: 'KUBECONFIG')]) {
-          sh "kubectl get pods -n ${NAMESPACE} --kubeconfig=$KUBECONFIG"
-          sh "kubectl get svc  -n ${NAMESPACE} --kubeconfig=$KUBECONFIG"
+          sh "kubectl get pods    -n ${NAMESPACE} --kubeconfig=$KUBECONFIG"
+          sh "kubectl get svc     -n ${NAMESPACE} --kubeconfig=$KUBECONFIG"
+          sh "kubectl get ingress -n ${NAMESPACE} --kubeconfig=$KUBECONFIG"
         }
       }
     }

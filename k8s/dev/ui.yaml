@@ -34,6 +34,8 @@ kind: Service
 metadata:
   name: retail-ui
   namespace: retail-dev
+  annotations:
+    cloud.google.com/neg: '{"ingress": true}'   # container-native load balancing
 spec:
   selector:
     app: retail-ui

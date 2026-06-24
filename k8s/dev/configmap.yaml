@@ -4,8 +4,8 @@ metadata:
   name: retail-config
   namespace: retail-dev
 data:
-  # Update these URLs to the real external URLs once DNS/LoadBalancer is assigned
-  APP_FRONTEND_BASE_URL: "http://retail-ui.retail-dev.svc.cluster.local"
+  # Stripe success/cancel redirects → Netlify frontend
+  APP_FRONTEND_BASE_URL: "https://retail-novamart.netlify.app"
   APP_CORS_ALLOWED_ORIGINS: "https://retail-novamart.netlify.app"
   SPRING_DATA_REDIS_HOST: "retail-redis.retail-dev.svc.cluster.local"
   SPRING_DATA_REDIS_PORT: "6379"
