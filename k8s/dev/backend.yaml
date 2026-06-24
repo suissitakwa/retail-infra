@@ -23,13 +23,19 @@ spec:
           env:
             # ── Database ──────────────────────────────────────────
             - name: SPRING_PROFILES_ACTIVE
-              value: dev
+              value: prod
             - name: SPRING_DATASOURCE_URL
               value: jdbc:postgresql://retail-db.retail-dev.svc.cluster.local:5432/retail_db
             - name: SPRING_DATASOURCE_USERNAME
-              value: user
+              valueFrom:
+                secretKeyRef:
+                  name: retail-secrets
+                  key: DB_USERNAME
             - name: SPRING_DATASOURCE_PASSWORD
-              value: password
+              valueFrom:
+                secretKeyRef:
+                  name: retail-secrets
+                  key: DB_PASSWORD
 
             # ── Secrets ───────────────────────────────────────────
             - name: STRIPE_SECRET_KEY
@@ -54,6 +60,11 @@ spec:
                 configMapKeyRef:
                   name: retail-config
                   key: APP_FRONTEND_BASE_URL
+            - name: APP_CORS_ALLOWED_ORIGINS
+              valueFrom:
+                configMapKeyRef:
+                  name: retail-config
+                  key: APP_CORS_ALLOWED_ORIGINS
             - name: SPRING_DATA_REDIS_HOST
               valueFrom:
                 configMapKeyRef:

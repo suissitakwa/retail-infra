@@ -2,3 +2,4 @@
 **/kubeconfig
 **/dev/secrets.yaml
 .env*
+CLAUDE.md
