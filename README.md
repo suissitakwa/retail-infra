@@ -36,7 +36,7 @@ kubectl apply -f k8s/dev/secrets.yaml   # after filling in real values locally
 ```
 
 The secret must exist in the `retail-dev` namespace before the backend pod starts.
-Required keys: `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `JWT_SECRET_KEY`.
+Required keys: `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `JWT_SECRET_KEY`, `DB_USERNAME`, `DB_PASSWORD`.
 
 > Current deployment target: **Google Kubernetes Engine (GKE) — Dev environment**
 
