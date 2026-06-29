@@ -30,16 +30,19 @@ pipeline {
     stage('Deploy Infrastructure') {
       steps {
         withCredentials([file(credentialsId: 'kubeconfig-retail', variable: 'KUBECONFIG')]) {
-          echo "Applying secrets, configmap, postgres, redis..."
-          sh "kubectl apply -n ${NAMESPACE} -f k8s/dev/secrets.yaml  --kubeconfig=$KUBECONFIG"
-          sh "kubectl apply -n ${NAMESPACE} -f k8s/dev/configmap.yaml --kubeconfig=$KUBECONFIG"
-          sh "kubectl apply -n ${NAMESPACE} -f k8s/dev/postgres.yaml  --kubeconfig=$KUBECONFIG"
-          sh "kubectl apply -n ${NAMESPACE} -f k8s/dev/redis.yaml     --kubeconfig=$KUBECONFIG"
+          echo "Applying secrets, configmap, postgres, redis, kafka..."
+          sh "kubectl apply -n ${NAMESPACE} -f k8s/dev/secrets.yaml   --kubeconfig=$KUBECONFIG"
+          sh "kubectl apply -n ${NAMESPACE} -f k8s/dev/configmap.yaml  --kubeconfig=$KUBECONFIG"
+          sh "kubectl apply -n ${NAMESPACE} -f k8s/dev/postgres.yaml   --kubeconfig=$KUBECONFIG"
+          sh "kubectl apply -n ${NAMESPACE} -f k8s/dev/redis.yaml      --kubeconfig=$KUBECONFIG"
+          sh "kubectl apply -n ${NAMESPACE} -f k8s/dev/kafka.yaml      --kubeconfig=$KUBECONFIG"
 
           echo "Waiting for Postgres to be ready..."
-          sh "kubectl rollout status deployment/retail-db -n ${NAMESPACE} --timeout=120s --kubeconfig=$KUBECONFIG || true"
+          sh "kubectl rollout status deployment/retail-db    -n ${NAMESPACE} --timeout=120s --kubeconfig=$KUBECONFIG || true"
           echo "Waiting for Redis to be ready..."
-          sh "kubectl rollout status deployment/retail-redis -n ${NAMESPACE} --timeout=60s --kubeconfig=$KUBECONFIG || true"
+          sh "kubectl rollout status deployment/retail-redis -n ${NAMESPACE} --timeout=60s  --kubeconfig=$KUBECONFIG || true"
+          echo "Waiting for Kafka to be ready..."
+          sh "kubectl rollout status deployment/retail-kafka -n ${NAMESPACE} --timeout=120s --kubeconfig=$KUBECONFIG || true"
         }
       }
     }
