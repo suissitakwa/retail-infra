@@ -51,9 +51,10 @@ pipeline {
       steps {
         withCredentials([file(credentialsId: 'kubeconfig-retail', variable: 'KUBECONFIG')]) {
           echo "Deploying backend, UI, and Ingress..."
-          sh "kubectl apply -n ${NAMESPACE} -f k8s/dev/backend.yaml  --kubeconfig=$KUBECONFIG"
-          sh "kubectl apply -n ${NAMESPACE} -f k8s/dev/ui.yaml       --kubeconfig=$KUBECONFIG"
-          sh "kubectl apply -n ${NAMESPACE} -f k8s/dev/ingress.yaml  --kubeconfig=$KUBECONFIG"
+          sh "kubectl apply -n ${NAMESPACE} -f k8s/dev/backend.yaml     --kubeconfig=$KUBECONFIG"
+          sh "kubectl apply -n ${NAMESPACE} -f k8s/dev/backend-hpa.yaml --kubeconfig=$KUBECONFIG"
+          sh "kubectl apply -n ${NAMESPACE} -f k8s/dev/ui.yaml          --kubeconfig=$KUBECONFIG"
+          sh "kubectl apply -n ${NAMESPACE} -f k8s/dev/ingress.yaml     --kubeconfig=$KUBECONFIG"
 
           echo "Rolling restart to pick up latest image..."
           sh "kubectl -n ${NAMESPACE} rollout restart deployment/retail-backend --kubeconfig=$KUBECONFIG || true"

@@ -82,3 +82,14 @@ Developer Workflow
 │ - Secrets/Config per env      │
 │ - Prometheus metrics scraping │
 └───────────────────────────────┘
+```
+
+---
+
+## Autoscaling
+
+`k8s/dev/backend-hpa.yaml` defines a `HorizontalPodAutoscaler` (`autoscaling/v2`) targeting the `retail-backend` Deployment: `minReplicas: 2`, `maxReplicas: 4`, scaling on CPU utilization (70% of the 250m request). It relies on GKE's built-in `metrics-server` (present by default on both Standard and Autopilot clusters — no extra manifest needed). Applied by Jenkins in the "Deploy Application" stage alongside `backend.yaml`.
+
+Raising `minReplicas` from 1 to 2 also removes the brief availability gap a single-replica rolling update otherwise causes. Memory is intentionally not used as a scaling metric yet — the backend's 512Mi memory request is already close to the JVM's own configured ceiling (see `retail/Dockerfile`), so a memory-based trigger needs that request right-sized first.
+
+The `retail/` repo's k6 load test (`loadtest/checkout-flow.js`) was run locally against Docker Postgres/Redis, not against this cluster, so its recorded numbers don't map directly to the 70% CPU threshold above — that figure is an industry-default starting point. Re-running k6 against the live ingress while watching `kubectl get hpa -n retail-dev -w` is the real verification that ties load testing to autoscaling behavior.

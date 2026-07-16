@@ -1,0 +1,22 @@
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: retail-backend
+  namespace: retail-dev
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: retail-backend
+  minReplicas: 2   # also removes the brief gap a single-replica rolling update causes today
+  maxReplicas: 4
+  metrics:
+    # CPU only for now — the 512Mi memory request is already tight against the JVM's own
+    # configured ceiling (Dockerfile: -Xmx350m + metaspace/codecache/direct ~= 650Mi floor),
+    # so a memory-based trigger would need the request right-sized first to avoid flapping.
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70   # industry-default starting point — tune after observing real load
